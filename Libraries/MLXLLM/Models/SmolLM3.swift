@@ -103,15 +103,27 @@ class SmolLM3Attention: Module {
 
 // MARK: - MLP
 
+// MLP block for SmolLM3 — Bloom Q2 fork.
+//
+// gate_proj / up_proj / down_proj all run through the Q2-packed Metal kernel
+// (`PackedQ2Linear`). No bias: SmolLM3-3B sets `mlp_bias=false`, and AWQ
+// scaling for up/gate is folded into the preceding `post_attention_layernorm`
+// rather than carried as a per-row bias here.
 class SmolLM3MLP: Module, UnaryLayer {
-    @ModuleInfo(key: "gate_proj") var gate: Linear
-    @ModuleInfo(key: "down_proj") var down: Linear
-    @ModuleInfo(key: "up_proj") var up: Linear
+    @ModuleInfo(key: "gate_proj") var gate: PackedQ2Linear
+    @ModuleInfo(key: "down_proj") var down: PackedQ2Linear
+    @ModuleInfo(key: "up_proj") var up: PackedQ2Linear
 
     init(_ args: SmolLM3Configuration) {
-        _gate.wrappedValue = Linear(args.hiddenSize, args.intermediateSize, bias: args.mlpBias)
-        _down.wrappedValue = Linear(args.intermediateSize, args.hiddenSize, bias: args.mlpBias)
-        _up.wrappedValue = Linear(args.hiddenSize, args.intermediateSize, bias: args.mlpBias)
+        _gate.wrappedValue = PackedQ2Linear(
+            inFeatures: args.hiddenSize, outFeatures: args.intermediateSize
+        )
+        _down.wrappedValue = PackedQ2Linear(
+            inFeatures: args.intermediateSize, outFeatures: args.hiddenSize
+        )
+        _up.wrappedValue = PackedQ2Linear(
+            inFeatures: args.hiddenSize, outFeatures: args.intermediateSize
+        )
     }
 
     func callAsFunction(_ x: MLXArray) -> MLXArray {
