@@ -44,7 +44,14 @@ let package = Package(
             ],
             path: "Libraries/MLXLLM",
             exclude: [
-                "README.md"
+                "README.md",
+                // BloomQ2Kernel.metal is documentation of the kernel body.
+                // The actual kernel source is embedded as a string in
+                // BloomQ2Kernel.swift and JIT-compiled by MLX at runtime via
+                // MLXFast.metalKernel. Excluding here so SPM/Xcode does not
+                // try to compile it as a standalone Metal translation unit
+                // (it has no function signature — that is auto-generated).
+                "Quantization/BloomQ2Kernel.metal",
             ]
         ),
         .target(
